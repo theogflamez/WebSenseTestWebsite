@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>WebSense · Caption Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:            #000000;
+    --bg-elev:       #0a0d0b;
+    --bg-card:       #0d110e;
+    --line:          #1a201d;
+    --line-soft:     #11161380;
+    --accent:        #00E676;
+    --accent-dim:    #00E67615;
+    --accent-glow:   #00E67630;
+    --purple:        #B388FF;
+    --text:          #eef2ef;
+    --text-dim:      #8a9189;
+    --text-faint:    #4a514e;
+    --radius:        18px;
+    --mono:          'IBM Plex Mono', ui-monospace, monospace;
+    --sans:          'IBM Plex Sans', system-ui, sans-serif;
+    --cond:          'IBM Plex Sans Condensed', var(--sans);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; line-height: 1.5; min-height: 100vh; }
+  body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 80% -10%, var(--accent-dim), transparent 70%),
+      radial-gradient(ellipse 60% 40% at 10% 100%, #B388FF10, transparent 70%);
+  }
+
+  /* ===== Header ===== */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 40px; border-bottom: 1px solid var(--line-soft);
+    backdrop-filter: blur(8px);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-mark {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--accent); color: #000;
+    display: grid; place-items: center; font-weight: 700;
+    box-shadow: 0 0 24px var(--accent-glow);
+  }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-text { font-family: var(--cond); font-weight: 700; font-size: 20px; letter-spacing: 0.14em; }
+  .logo-text .dot { color: var(--accent); }
+
+  .nav-tabs { display: flex; background: var(--bg-elev); border: 1px solid var(--line); border-radius: 999px; padding: 4px; gap: 2px; }
+  .nav-tabs button {
+    background: transparent; border: 0; color: var(--text-dim);
+    font-family: var(--cond); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+    font-size: 12px; padding: 8px 18px; border-radius: 999px; cursor: pointer;
+    transition: all .2s ease;
+  }
+  .nav-tabs button.active {
+    background: var(--accent); color: #000;
+    box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  .status {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 16px; font-family: var(--cond); font-size: 11px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim);
+  }
+  .status .pulse {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite;
+  }
+  .status.offline .pulse { background: #ff4466; box-shadow: 0 0 8px #ff4466; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ===== Main layout ===== */
+  main {
+    max-width: 1400px; margin: 0 auto; padding: 48px 40px;
+    display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px;
+  }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 28px 20px; gap: 32px; } }
+
+  h1 {
+    font-family: var(--sans); font-weight: 400; font-size: 48px;
+    letter-spacing: -0.02em; margin-bottom: 10px;
+  }
+  .subtitle { color: var(--text-dim); font-size: 15px; margin-bottom: 32px; }
+
+  /* ===== Caption card ===== */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px;
+    position: relative;
+  }
+
+  .label {
+    font-family: var(--cond); font-size: 11px; font-weight: 600;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 14px;
+  }
+  textarea {
+    width: 100%; min-height: 200px; resize: vertical;
+    background: transparent; border: 0; outline: 0;
+    color: var(--text); font-family: var(--sans); font-size: 16px; line-height: 1.5;
+  }
+  textarea::placeholder { color: var(--text-faint); }
+
+  .time-row { display: flex; gap: 14px; margin-top: 18px; align-items: center; }
+  .time-row label { font-family: var(--cond); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-dim); }
+  input[type="datetime-local"] {
+    background: var(--bg-elev); border: 1px solid var(--line); border-radius: 8px;
+    color: var(--text); padding: 8px 12px; font-family: var(--mono); font-size: 13px;
+    color-scheme: dark;
+  }
+
+  .analyze-btn {
+    display: flex; align-items: center; gap: 10px; margin-left: auto;
+    background: var(--accent); color: #000;
+    border: 0; border-radius: 10px; padding: 12px 22px;
+    font-family: var(--cond); font-weight: 700; font-size: 14px;
+    letter-spacing: 0.08em; text-transform: none; cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .analyze-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 28px var(--accent-glow); }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .analyze-btn svg { width: 14px; height: 14px; }
+
+  /* ===== Stats row ===== */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 20px;
+  }
+  .stat {
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 18px;
+  }
+  .stat .lbl { font-family: var(--cond); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 10px; }
+  .stat .val { font-family: var(--sans); font-size: 18px; font-weight: 500; color: var(--accent); }
+  .stat .val.neutral { color: var(--text); }
+  .stat .val.purple { color: var(--purple); }
+  .kw-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+  .kw-chip {
+    font-family: var(--mono); font-size: 11px; color: var(--purple);
+    padding: 2px 8px; background: #B388FF12; border-radius: 4px;
+  }
+
+  /* ===== View count display ===== */
+  .view-card {
+    background: linear-gradient(180deg, #06120b 0%, #020604 100%);
+    border: 1px solid #12291c; border-radius: var(--radius);
+    padding: 36px 32px; position: relative; overflow: hidden;
+  }
+  .view-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, var(--accent-dim), transparent 70%);
+    pointer-events: none;
+  }
+  .view-card .label { color: var(--accent); margin-bottom: 24px; }
+
+  .view-display {
+    font-family: var(--mono); font-weight: 300;
+    font-size: clamp(72px, 10vw, 128px); line-height: 1;
+    letter-spacing: -0.04em; color: var(--accent);
+    text-shadow: 0 0 40px var(--accent-glow);
+    font-variant-numeric: tabular-nums;
+    margin: 30px 0 50px 0;
+    transition: opacity 0.3s ease;
+  }
+  .view-display.placeholder { color: #1a2a1f; text-shadow: none; }
+
+  .range-bar {
+    position: relative; height: 6px; background: var(--line);
+    border-radius: 999px; margin: 12px 0 10px;
+  }
+  .range-fill {
+    position: absolute; top: 0; left: 0; height: 100%;
+    background: linear-gradient(90deg, var(--accent) 0%, #B388FF 100%);
+    border-radius: 999px; width: 0%;
+    transition: width 0.8s cubic-bezier(.2,.8,.2,1);
+  }
+  .range-marker {
+    position: absolute; top: -4px; width: 14px; height: 14px;
+    background: #fff; border-radius: 50%;
+    box-shadow: 0 0 0 3px var(--accent), 0 0 12px var(--accent);
+    left: 50%; transform: translateX(-50%);
+    opacity: 0; transition: opacity 0.6s ease;
+  }
+  .range-marker.visible { opacity: 1; }
+  .range-labels {
+    display: flex; justify-content: space-between; margin-top: 14px;
+    font-family: var(--cond); font-size: 11px; letter-spacing: 0.18em;
+    color: var(--text-dim); text-transform: uppercase;
+  }
+
+  /* ===== Insights ===== */
+  .insights-card {
+    background: var(--bg-card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 24px; margin-top: 20px;
+  }
+  .insights-card h3 {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--cond); font-size: 13px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--text); font-weight: 600; margin-bottom: 14px;
+  }
+  .insights-card h3 svg { width: 16px; height: 16px; color: var(--accent); }
+  .insights-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .insights-list li {
+    color: var(--text-dim); font-size: 14px; padding-left: 18px; position: relative;
+  }
+  .insights-list li::before {
+    content: '›'; position: absolute; left: 0; color: var(--accent); font-weight: 600;
+  }
+  .insights-list li.empty { color: var(--text-faint); font-style: italic; padding-left: 0; }
+  .insights-list li.empty::before { content: ''; }
+
+  /* ===== Footer ===== */
+  footer {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 40px; border-top: 1px solid var(--line-soft);
+    font-family: var(--cond); font-size: 11px; letter-spacing: 0.15em;
+    text-transform: uppercase; color: var(--text-faint); margin-top: 40px;
+  }
+  .footer-indicators { display: flex; gap: 24px; }
+  .indicator { display: flex; align-items: center; gap: 8px; }
+  .indicator .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .indicator.gpu .dot { background: #4AA9FF; box-shadow: 0 0 6px #4AA9FF; }
+  .indicator.relay .dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  /* ===== Loading ===== */
+  .loading .view-display { animation: flicker 0.8s infinite; }
+  @keyframes flicker { 0%,100% {opacity: 0.3;} 50% {opacity: 1;} }
+
+  .error-banner {
+    background: #ff446622; border: 1px solid #ff4466;
+    border-radius: 10px; padding: 12px 16px; margin-top: 14px;
+    color: #ff8899; font-size: 13px; display: none;
+  }
+  .error-banner.visible { display: block; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 17l5-5 4 4 8-8"/><path d="M14 8h6v6"/>
+      </svg>
+    </div>
+    <div class="logo-text">WEBSENSE<span class="dot">.</span></div>
+  </div>
+  <div class="nav-tabs">
+    <button class="active">Predictor</button>
+    <button>Setup</button>
+  </div>
+  <div class="status" id="status">
+    <span class="pulse"></span>
+    <span id="statusText">Connecting...</span>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h1>Caption Analyzer</h1>
+    <p class="subtitle">Predict the viral potential of your content using your pre-trained model.</p>
+
+    <div class="card">
+      <div class="label">Draft Caption</div>
+      <textarea id="caption" placeholder="Paste your social media caption here..."></textarea>
+
+      <div class="time-row">
+        <label for="time">Posting Time</label>
+        <input type="datetime-local" id="time" />
+        <button class="analyze-btn" id="analyzeBtn">
+          Analyze Reach
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="error-banner" id="errorBanner"></div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat">
+        <div class="lbl">Sentiment</div>
+        <div class="val" id="sentiment">Neutral</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Hook Grade</div>
+        <div class="val neutral" id="hookGrade">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Keywords</div>
+        <div class="val purple" id="keywords">None detected</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="view-card">
+      <div class="label">Estimated View Count</div>
+      <div class="view-display placeholder" id="viewDisplay">000,000</div>
+      <div class="range-bar">
+        <div class="range-fill" id="rangeFill"></div>
+        <div class="range-marker" id="rangeMarker"></div>
+      </div>
+      <div class="range-labels">
+        <span>Conservative</span>
+        <span>Density</span>
+        <span>Viral</span>
+      </div>
+    </div>
+
+    <div class="insights-card">
+      <h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 16.8l-6.2 4.5 2.4-7.4L2 9.4h7.6z"/>
+        </svg>
+        Growth Insights
+      </h3>
+      <ul class="insights-list" id="insightsList">
+        <li class="empty">Submit a caption to view tactics.</li>
+      </ul>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div>© 2026 Websense Intelligence Unit — Confidential</div>
+  <div class="footer-indicators">
+    <div class="indicator gpu"><span class="dot"></span>GPU Acceleration</div>
+    <div class="indicator relay"><span class="dot"></span>Relay Stable</div>
+  </div>
+</footer>
+
+<script>
+  // ==========================================================================
+  // CONFIG — paste your ngrok URL here after running Colab Cell 14
+  // ==========================================================================
+  const API_URL = 'https://YOUR-NGROK-URL.ngrok-free.app';
+  // ==========================================================================
+
+  // Set default time to now
+  const timeInput = document.getElementById('time');
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  timeInput.value = now.toISOString().slice(0, 16);
+
+  // Status indicator
+  async function checkHealth() {
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    try {
+      const r = await fetch(`${API_URL}/health`, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+      if (r.ok) { statusEl.classList.remove('offline'); statusText.textContent = 'System Online'; }
+      else throw new Error();
+    } catch {
+      statusEl.classList.add('offline');
+      statusText.textContent = 'API Offline';
+    }
+  }
+  checkHealth();
+  setInterval(checkHealth, 15000);
+
+  // Number animation
+  function animateNumber(el, target, duration = 900) {
+    el.classList.remove('placeholder');
+    const start = 0, startTime = performance.now();
+    function frame(t) {
+      const progress = Math.min((t - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const val = Math.round(start + (target - start) * eased);
+      el.textContent = val.toLocaleString('en-US', { minimumIntegerDigits: 6 }).replace(/^0+(\d{3},\d{3})/, '$1');
+      if (progress < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // Main analyze
+  document.getElementById('analyzeBtn').addEventListener('click', async () => {
+    const caption = document.getElementById('caption').value.trim();
+    const time    = document.getElementById('time').value.replace('T', ' ');
+    const btn     = document.getElementById('analyzeBtn');
+    const err     = document.getElementById('errorBanner');
+    err.classList.remove('visible');
+
+    if (!caption) {
+      err.textContent = 'Please enter a caption.';
+      err.classList.add('visible');
+      return;
+    }
+
+    btn.disabled = true;
+    document.body.classList.add('loading');
+
+    try {
+      const res = await fetch(`${API_URL}/predict`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': 'true'
+        },
+        body: JSON.stringify({ caption, posting_time: time })
+      });
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const data = await res.json();
+
+      // View count
+      animateNumber(document.getElementById('viewDisplay'), data.predicted_views);
+
+      // Range bar — position marker based on predicted vs range
+      const span = Math.max(data.viral - data.conservative, 1);
+      const pct = Math.max(0, Math.min(100,
+        ((data.predicted_views - data.conservative) / span) * 100
+      ));
+      document.getElementById('rangeFill').style.width = pct + '%';
+      const marker = document.getElementById('rangeMarker');
+      marker.style.left = pct + '%';
+      marker.classList.add('visible');
+
+      // Stats
+      document.getElementById('sentiment').textContent = data.sentiment;
+      document.getElementById('hookGrade').textContent = data.hook_grade;
+
+      const kwEl = document.getElementById('keywords');
+      if (data.keywords && data.keywords.length) {
+        kwEl.innerHTML = '<div class="kw-chips">' +
+          data.keywords.map(k => `<span class="kw-chip">#${k}</span>`).join('') + '</div>';
+      } else {
+        kwEl.textContent = 'None detected';
+      }
+
+      // Insights
+      const list = document.getElementById('insightsList');
+      list.innerHTML = data.insights.map(t => `<li>${t}</li>`).join('');
+
+    } catch (e) {
+      err.textContent = `Could not reach the API. Check your ngrok URL. (${e.message})`;
+      err.classList.add('visible');
+    } finally {
+      btn.disabled = false;
+      document.body.classList.remove('loading');
+    }
+  });
+</script>
+</body>
+</html>
